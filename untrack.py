@@ -38,11 +38,12 @@ from color import color
 from docopt import docopt
 
 from glob import glob
+import re
 
 __version__ = '0.0.1'
 
 
-def max_file_hash(n=10):
+def max_file_hash(n=10, short=False):
     pack_path = glob('.git/objects/pack/*.idx')
 
     if not pack_path:
@@ -50,27 +51,53 @@ def max_file_hash(n=10):
         pack_path = glob('.git/objects/pack/*.idx')
 
     try:
-        return awk(tail(sort(git('verify-pack',
-                             '-v',
-                             pack_path), '-k', '3', '-n'), '-{0:d}'.format(n)), '{print $1}')
+        if short:
+            return awk(tail(sort(git('verify-pack', '-v', pack_path, '-k', '3', '-n'),
+                            '-{0:d}'.format(n)),
+                            '{print $1}'))
+        else:
+            return tail(sort(git('verify-pack', '-v', glob('.git/objects/pack/*.idx')), '-k', '3', '-n'),
+                        '-{0:d}'.format(n))
+
     except ErrorReturnCode_1 as ex:
         color.print_err(ex)
         return None
 
+def format_num(num, split_len=3, split_char=',',):
+    """
+    Example:
+        format_num(1000000000000000,split_char='_',split_len=3)
+        '1_000_000_000_000_000'
+    :param num:
+    :param split_len:
+    :param split_char:
+    :return:formatted str
+    """
+    assert split_len > 0
+
+    l = [c + split_char if (i) % split_len == 0 else c for i, c in enumerate(reversed(str(num)))]
+    snum = ''.join(l[::-1])[:-1]
+
+    return snum
 
 def max_file_hash_name(n=10):
     """name may be empty"""
-    hash_result = max_file_hash(n)
 
+    hash_result = max_file_hash(n)
     if hash_result is None:
         return None
 
     details_result = []
+
     for line in hash_result:
+        line_list = re.split('\W+', line)
         try:
-            details_result.append(grep(git('rev-list', '--objects', '--all'), '-i', line.strip()))
+            hash_fn = grep(git('rev-list', '--objects', '--all'), '-i', line_list[0]).__str__().strip()
+            match_item = '{0} {1} KB'.format(hash_fn, format_num(int(line_list[2])))
         except ErrorReturnCode_1:
-            details_result.append(None)
+            match_item = None
+
+        details_result.append(match_item)
 
     return details_result
 
@@ -108,12 +135,20 @@ def reset():
     except ErrorReturnCode_1 as ex:
         print(ex)
 
+
 def cli():
     arguments = docopt(__doc__, version=__version__)
 
     if arguments['list']:
-        n = arguments['-n']
-        color.print_info(max_file_hash_name(n))
+        try:
+            n = int(arguments['-n'])
+        except ValueError as ex:
+            color.print_err(ex)
+            return
+
+        result = max_file_hash_name(n)
+        if result is not None:
+            [color.print_info(item) for item in result]
 
 
 if __name__ == '__main__':
