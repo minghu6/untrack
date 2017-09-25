@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
-with open('requirements.txt.txt') as f:
+with open('requirements.txt') as f:
     REQUIRED = f.read().splitlines()
 
 def find_version():
@@ -44,7 +44,7 @@ setup(
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
-        'Operating System:: POSIX:: Linux',
+        'Operating System :: POSIX',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
     ],
