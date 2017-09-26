@@ -1,1 +1,1 @@
-# A tool to rm large of git
+# A tool to untrack file from git
